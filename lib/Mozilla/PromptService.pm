@@ -25,7 +25,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 require XSLoader;
 XSLoader::load('Mozilla::PromptService', $VERSION);
@@ -49,6 +49,8 @@ Mozilla::PromptService - Perl interface to the Mozilla nsIPromptService
             my ($parent, $title, $dialog_text) = @_;
             # do something smart on alert ...
         },
+	# Prompt callback should return result
+	Prompt => sub { return "Prompt Result" },
         DEFAULT => sub {
             my ($name, $parent, $title, $dialog_text) = @_;
             # some other confirmation is needed
@@ -75,6 +77,9 @@ parameters.
 
 Special C<DEFAULT> key can be used to provide one callback for all events.
 The callback function will get name of the event as its first parameter.
+
+C<Prompt> callback should return result which will be passed back to JavaScript.
+If it returns C<undef> cancel flag will be set.
 
 =head1 SEE ALSO
 

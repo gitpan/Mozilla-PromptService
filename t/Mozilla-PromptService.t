@@ -1,7 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 16;
+use Test::More tests => 22;
 use Mozilla::Mechanize;
 use URI::file;
 use Mozilla::DOM;
@@ -37,9 +37,11 @@ is($_last_call[0], 'ConfirmEx');
 
 my @_confirm_ex;
 @_last_call = ();
+my $_prompt_res = "AAA";
 
 is(Mozilla::PromptService::Register({
 	ConfirmEx => sub { @_confirm_ex = @_; },
+	Prompt => sub { return $_prompt_res; },
 	DEFAULT => sub { @_last_call = @_; },
 }), 1);
 $moz->submit_form(
@@ -61,5 +63,14 @@ is($_last_call[0], 'Alert');
 
 is(scalar(@_last_call), 4);
 is($_last_call[3], "gee");
+
+ok($moz->get('javascript:alert(prompt("gee"))'));
+is($_last_call[0], 'Alert');
+is($_last_call[3], "AAA");
+
+undef $_prompt_res;
+ok($moz->get('javascript:alert(prompt("gee"))'));
+is($_last_call[0], 'Alert');
+is($_last_call[3], "null");
 
 $moz->close();

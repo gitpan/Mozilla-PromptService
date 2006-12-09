@@ -50,7 +50,7 @@ static SV *wrap_unichar_string(const PRUnichar *uni_str) {
 	return newSVpv(u8str, 0);
 }
 
-#define END_CALL(N) \
+#define PREPARE_CB(N) \
 	dSP;\
 	SV *cb;\
 	int fres = find_callback(#N, &cb);\
@@ -68,8 +68,10 @@ static SV *wrap_unichar_string(const PRUnichar *uni_str) {
 	XPUSHs(sv_2mortal(wrap_dom_window(aParent)));\
 	XPUSHs(sv_2mortal(wrap_unichar_string(aDialogTitle)));\
 	XPUSHs(sv_2mortal(wrap_unichar_string(aDialogText)));\
-	PUTBACK;\
-\
+	PUTBACK;
+
+#define END_CALL(N) \
+	PREPARE_CB(N) \
 	call_sv(cb, G_DISCARD);\
 	return NS_OK;
 
@@ -138,7 +140,25 @@ MyPromptService::Prompt(nsIDOMWindow* aParent, const PRUnichar* aDialogTitle,
                          const PRUnichar* aCheckMsg, PRBool* aCheckValue,
                          PRBool* aConfirm)
 {
-	END_CALL(Prompt)
+	int count;
+	SV *sv_res;
+	nsString val;
+
+	PREPARE_CB(Prompt)
+	count = call_sv(cb, G_SCALAR);
+	SPAGAIN;
+	if (count != 1)
+		croak("# callback should return exactly one value");
+	sv_res = POPs;
+	if (SvPVX(sv_res)) {
+		val.AssignWithConversion(SvPV_nolen(sv_res));
+		*aValue = ToNewUnicode(val);
+		*aConfirm = PR_TRUE;
+	} else
+		*aConfirm = PR_FALSE;
+	FREETMPS;
+	LEAVE;
+	return NS_OK;
 }
 
 NS_IMETHODIMP
