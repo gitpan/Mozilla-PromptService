@@ -4,12 +4,13 @@
 
 #include "ppport.h"
 
-#include <mozilla/nsIGenericFactory.h>
-#include <mozilla/nsIComponentRegistrar.h>
-#include <mozilla/nsIPromptService.h>
-#include <mozilla/nsCOMPtr.h>
-#include <mozilla/nsXPCOM.h>
-#include <mozilla/string/nsString.h>
+#include <nsIGenericFactory.h>
+#include <nsIComponentRegistrar.h>
+#include <nsIPromptService.h>
+#include <nsCOMPtr.h>
+#include <nsXPCOM.h>
+#include <nsStringAPI.h>
+#include <nsEmbedString.h>
 
 static SV *_callbacks;
 
@@ -43,10 +44,14 @@ static SV *wrap_dom_window(nsIDOMWindow *parent) {
 }
 
 static SV *wrap_unichar_string(const PRUnichar *uni_str) {
+	nsEmbedString utf8;
+	nsEmbedCString u8c;
 	const char * u8str;
-	NS_ConvertUTF16toUTF8 utf8(uni_str);
 
-	u8str = utf8.get();
+	utf8 = uni_str;
+	NS_UTF16ToCString(utf8, NS_CSTRING_ENCODING_UTF8, u8c);
+
+	u8str = u8c.get();
 	return newSVpv(u8str, 0);
 }
 
@@ -142,7 +147,7 @@ MyPromptService::Prompt(nsIDOMWindow* aParent, const PRUnichar* aDialogTitle,
 {
 	int count;
 	SV *sv_res;
-	nsString val;
+	nsEmbedString val;
 
 	PREPARE_CB(Prompt)
 	count = call_sv(cb, G_SCALAR);
@@ -151,8 +156,10 @@ MyPromptService::Prompt(nsIDOMWindow* aParent, const PRUnichar* aDialogTitle,
 		croak("# callback should return exactly one value");
 	sv_res = POPs;
 	if (SvPVX(sv_res)) {
-		val.AssignWithConversion(SvPV_nolen(sv_res));
-		*aValue = ToNewUnicode(val);
+		nsEmbedCString u8(SvPV_nolen(sv_res));
+		nsEmbedString u16;
+		NS_CStringToUTF16(u8, NS_CSTRING_ENCODING_UTF8, u16);
+		*aValue = NS_StringCloneData(u16);
 		*aConfirm = PR_TRUE;
 	} else
 		*aConfirm = PR_FALSE;

@@ -25,15 +25,8 @@ ok($moz->get($url));
 is($moz->title, "Test-forms Page");
 
 my $prev_uri = $moz->uri;
-$moz->submit_form(
-    form_name => 'form2',
-    fields    => {
-        dummy2 => 'filled',
-        query  => 'text',
-    }
-);
-is($moz->uri, "$prev_uri?dummy2=filled&query=text");
-is($_last_call[0], 'ConfirmEx');
+ok($moz->get('javascript:alert("gee")'));
+is($_last_call[0], 'Alert');
 
 my @_confirm_ex;
 @_last_call = ();
