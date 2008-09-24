@@ -1,7 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 23;
+use Test::More tests => 32;
 use Mozilla::Mechanize;
 use URI::file;
 use Mozilla::DOM;
@@ -34,12 +34,16 @@ is($_last_call[0], 'Alert');
 my @_confirm_ex;
 @_last_call = ();
 my $_prompt_res = "AAA";
+my $_confirm_res;
 
 is(Mozilla::PromptService::Register({
 	ConfirmEx => sub { @_confirm_ex = @_; },
+	Confirm => sub { return $_confirm_res; },
 	Prompt => sub { return $_prompt_res; },
 	DEFAULT => sub { @_last_call = @_; },
 }), 1);
+is_deeply(\@_cons_msgs, []) or exit 1;
+
 $moz->submit_form(
     form_name => 'form2',
     fields    => {
@@ -52,6 +56,7 @@ is_deeply(\@_last_call, []);
 
 our $PRO_VERSION;
 do "t/version.pl";
+
 SKIP: {
 	skip "No submit prompt for xulrunner", 3 unless $PRO_VERSION < 1.9;
 is(scalar(@_confirm_ex), 3);
@@ -59,15 +64,17 @@ is(scalar(@_confirm_ex), 3);
 isa_ok($_confirm_ex[0], 'Mozilla::DOM::Window');
 is($_confirm_ex[0]->GetTextZoom, 1);
 };
+is_deeply(\@_cons_msgs, []) or exit 1;
 
 ok($moz->get('javascript:alert("gee")'));
+is_deeply(\@_cons_msgs, []) or exit 1;
 is($_last_call[0], 'Alert');
 
 is(scalar(@_last_call), 4);
 is($_last_call[3], "gee");
 
 ok($moz->get('javascript:alert(prompt("gee"))'));
-is_deeply(\@_cons_msgs, []);
+is_deeply(\@_cons_msgs, []) or exit 1;
 is($_last_call[0], 'Alert');
 is($_last_call[3], "AAA");
 
@@ -75,5 +82,14 @@ undef $_prompt_res;
 ok($moz->get('javascript:alert(prompt("gee"))'));
 is($_last_call[0], 'Alert');
 is($_last_call[3], "null");
+
+ok($moz->get('javascript:alert(confirm("Do you need it"))'));
+is($_last_call[0], 'Alert');
+is($_last_call[3], 'false');
+
+$_confirm_res = 1;
+ok($moz->get('javascript:alert(confirm("Do you need it"))'));
+is($_last_call[0], 'Alert');
+is($_last_call[3], 'true');
 
 $moz->close();

@@ -11,6 +11,7 @@ use File::Slurp;
 my %pkgcfg = ExtUtils::PkgConfig->find("mozilla-gtkmozembed >= 1.7"
 		, "firefox-gtkmozembed >= 1.5");
 my $ver = $pkgcfg{modversion};
+$ver =~ s/\.\d+\.\d+$//;
 write_file("t/version.pl", "our \$PRO_VERSION = $ver;\n1\n");
 
 my $dep = ExtUtils::Depends->new('Mozilla::PromptService', 'Gtk2::MozEmbed');

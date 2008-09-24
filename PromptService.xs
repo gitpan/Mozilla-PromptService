@@ -6,7 +6,7 @@
 
 #include <nsIGenericFactory.h>
 #include <nsIComponentRegistrar.h>
-#include <nsIPromptService.h>
+#include <nsIPromptService2.h>
 #include <nsCOMPtr.h>
 #include <nsXPCOM.h>
 #include <nsStringAPI.h>
@@ -81,15 +81,16 @@ static SV *wrap_unichar_string(const PRUnichar *uni_str) {
 	return NS_OK;
 
 class nsIDOMWindow;
-class MyPromptService : public nsIPromptService
+class MyPromptService : public nsIPromptService2
 {
 public:
     NS_DECL_ISUPPORTS
     NS_DECL_NSIPROMPTSERVICE
+    NS_DECL_NSIPROMPTSERVICE2
 };
 
 
-NS_IMPL_ISUPPORTS1(MyPromptService, nsIPromptService)
+NS_IMPL_ISUPPORTS2(MyPromptService, nsIPromptService, nsIPromptService2)
 
 NS_IMETHODIMP
 MyPromptService::Alert(nsIDOMWindow* aParent, const PRUnichar* aDialogTitle,
@@ -112,7 +113,21 @@ MyPromptService::Confirm(nsIDOMWindow* aParent,
                           const PRUnichar* aDialogTitle,
                           const PRUnichar* aDialogText, PRBool* aConfirm)
 {
-	END_CALL(Confirm)
+	int count;
+	SV *sv_res;
+
+	PREPARE_CB(Confirm)
+	count = call_sv(cb, G_SCALAR);
+	SPAGAIN;
+	if (count != 1)
+		croak("# callback should return exactly one value");
+
+	sv_res = POPs;
+	*aConfirm = SvIV(sv_res);
+
+	FREETMPS;
+	LEAVE;
+	return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -199,6 +214,25 @@ MyPromptService::Select(nsIDOMWindow* aParent, const PRUnichar* aDialogTitle,
                          PRBool* aConfirm)
 {
 	END_CALL(Select)
+}
+
+NS_IMETHODIMP
+MyPromptService::PromptAuth(nsIDOMWindow *aParent, nsIChannel *aChannel,
+		PRUint32 level, nsIAuthInformation *authInfo
+		, const PRUnichar *checkboxLabel,
+		PRBool *checkValue, PRBool *_retval)
+{
+	return NS_OK;
+}
+
+NS_IMETHODIMP
+MyPromptService::AsyncPromptAuth(nsIDOMWindow *aParent, nsIChannel *aChannel,
+		nsIAuthPromptCallback *aCallback, nsISupports *aContext,
+		PRUint32 level, nsIAuthInformation *authInfo
+		, const PRUnichar *checkboxLabel, PRBool *checkValue
+		, nsICancelable **_retval)
+{
+	return NS_OK;
 }
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(MyPromptService)
